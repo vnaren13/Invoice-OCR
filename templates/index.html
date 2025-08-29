@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice OCR Extractor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Custom spinner for the button */
+        .btn-spinner {
+            display: inline-block;
+            width: 1.5rem;
+            height: 1.5rem;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
+        .gradient-button {
+            background-image: linear-gradient(to right, #FCD34D, #F59E0B, #D97706);
+            transition: all 0.3s ease;
+        }
+        
+        .gradient-button:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        .file-upload-label {
+            transition: all 0.3s ease;
+        }
+
+        .file-upload-label:hover {
+            border-color: #F59E0B;
+            background-color: #FFFBEB;
+        }
+        
+        .upload-icon {
+            color: #D97706;
+        }
+
+        /* Animation for the "How It Works" boxes */
+        .work-step {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .work-step:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+    </style>
+</head>
+<body class="bg-yellow-50 text-gray-800 flex items-center justify-center min-h-screen p-6">
+
+    <div class="w-full max-w-5xl mx-auto bg-white p-10 rounded-3xl shadow-2xl border-4 border-yellow-200">
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-extrabold text-yellow-700 mb-2">Invoice OCR Extractor</h1>
+            <p class="text-gray-500 mt-2 text-lg">Upload an invoice image to instantly extract key information.</p>
+        </div>
+
+        <!-- File Upload Section -->
+        <form id="upload-form" class="mb-8">
+            <label for="file-upload" class="file-upload-label relative border-4 border-dashed border-yellow-300 rounded-2xl p-8 text-center cursor-pointer block">
+                <div class="flex flex-col items-center">
+                    <svg class="mx-auto h-16 w-16 upload-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                    </svg>
+                    <span id="file-name-display" class="mt-4 font-semibold text-yellow-600 text-lg">Click here to upload an invoice image or PDF</span>
+                    <p class="text-sm text-gray-400 mt-2">PNG, JPG, PDF</p>
+                </div>
+                <input id="file-upload" name="file" type="file" class="sr-only" accept="image/*,.pdf">
+            </label>
+            <button id="extract-button" type="submit" class="w-full mt-6 text-white font-bold py-4 px-6 rounded-xl gradient-button shadow-lg focus:outline-none focus:ring-4 focus:ring-yellow-400 focus:ring-opacity-50">
+                <span id="button-content" class="flex items-center justify-center">
+                    <span id="button-text">Extract Information</span>
+                    <div id="button-spinner" class="btn-spinner ml-2 hidden"></div>
+                </span>
+            </button>
+        </form>
+        <!-- Results Section -->
+        <div id="results-container" class="hidden mt-12 pt-8 border-t-2 border-dashed border-yellow-200">
+            <div id="error-message" class="hidden p-5 mb-6 text-base text-red-700 bg-red-100 rounded-xl" role="alert">
+                <!-- Error content will be inserted here -->
+            </div>
+            
+            <div id="results-content" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Extracted Fields -->
+                <div class="bg-white p-6 rounded-2xl border-4 border-yellow-200">
+                    <h2 class="text-2xl font-bold mb-5 text-yellow-600">Extracted Fields</h2>
+                    <div class="space-y-4">
+                        <p class="text-gray-600 text-base"><strong>Invoice #:</strong> <span id="invoice-number" class="font-mono bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm"></span></p>
+                        <p class="text-gray-600 text-base"><strong>Total Amount:</strong> <span id="total-amount" class="font-mono bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm"></span></p>
+                        <p class="text-gray-600 text-base"><strong>Due Date:</strong> <span id="due-date" class="font-mono bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm"></span></p>
+                    </div>
+                </div>
+                <!-- Full Extracted Text -->
+                <div class="bg-white p-6 rounded-2xl border-4 border-yellow-200">
+                    <h2 class="text-2xl font-bold mb-5 text-yellow-600">Full Text</h2>
+                    <pre id="full-text" class="bg-yellow-50 p-4 rounded-xl border-2 border-yellow-100 h-64 overflow-y-auto text-sm whitespace-pre-wrap text-gray-600"></pre>
+                </div>
+            </div>
+        </div>
+
+                <!-- How It Works Section (Interactive) -->
+                <div class="mt-12 pt-8 border-t-2 border-dashed border-yellow-200">
+                    <h2 class="text-center text-3xl font-extrabold text-yellow-700 mb-6">How It Works: A Simple Guide! 💡</h2>
+                    <div id="how-it-works-accordion" class="flex flex-col space-y-4">
+        
+                        <!-- Step 1: Document Goes In -->
+                        <div class="work-step bg-yellow-50 rounded-xl border-2 border-yellow-100 overflow-hidden">
+                            <button class="accordion-header w-full flex justify-between items-center p-6 text-xl font-bold text-yellow-800 focus:outline-none">
+                                <span>1. Your Document Goes In 📄</span>
+                                <svg class="arrow-icon w-6 h-6 transform transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            <div class="accordion-content px-6 pb-6 text-gray-600 hidden">
+                                <p>You upload your invoice, whether it's a picture (like JPG/PNG) or a PDF file. Our app takes this digital document and makes sure it's super clear and ready to be read. Think of it like giving a clear photo to a reader.</p>
+                            </div>
+                        </div>
+        
+                        <!-- Step 2: AI Reads Everything (Tesseract OCR) -->
+                        <div class="work-step bg-yellow-50 rounded-xl border-2 border-yellow-100 overflow-hidden">
+                            <button class="accordion-header w-full flex justify-between items-center p-6 text-xl font-bold text-yellow-800 focus:outline-none">
+                                <span>2. AI Reads & Types (Tesseract OCR) 🤖</span>
+                                <svg class="arrow-icon w-6 h-6 transform transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            <div class="accordion-content px-6 pb-6 text-gray-600 hidden">
+                                <p>This is where the magic happens! Our app uses a powerful AI "reader" called **Tesseract**. Imagine Tesseract as a super-smart librarian who looks at every word and number in your document. It then *types out* everything it sees into digital text. So, your picture or PDF becomes readable text for the computer!</p>
+                            </div>
+                        </div>
+        
+                        <!-- Step 3: Key Info is Found! -->
+                        <div class="work-step bg-yellow-50 rounded-xl border-2 border-yellow-100 overflow-hidden">
+                            <button class="accordion-header w-full flex justify-between items-center p-6 text-xl font-bold text-yellow-800 focus:outline-none">
+                                <span>3. Key Info is Found! 🔍</span>
+                                <svg class="arrow-icon w-6 h-6 transform transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            <div class="accordion-content px-6 pb-6 text-gray-600 hidden">
+                                <p>Once we have all the text, our app plays detective! It uses special patterns to quickly find the important bits you need, like the "Invoice Number," the "Total Amount," and the "Due Date." It pulls these key pieces of information out so you don't have to search manually!</p>
+                            </div>
+                        </div>
+        
+                    </div>
+                </div>
+        
+
+   
+
+    <script>
+        const uploadForm = document.getElementById('upload-form');
+        const fileInput = document.getElementById('file-upload');
+        const fileNameDisplay = document.getElementById('file-name-display');
+        const extractButton = document.getElementById('extract-button');
+        const buttonText = document.getElementById('button-text');
+        const buttonSpinner = document.getElementById('button-spinner');
+        
+        const resultsContainer = document.getElementById('results-container');
+        const resultsContent = document.getElementById('results-content');
+        const errorMessage = document.getElementById('error-message');
+
+
+        const invoiceNumberEl = document.getElementById('invoice-number');
+        const totalAmountEl = document.getElementById('total-amount');
+        const dueDateEl = document.getElementById('due-date');
+        const fullTextEl = document.getElementById('full-text');
+
+
+        // Update file name on selection
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                fileNameDisplay.textContent = fileInput.files[0].name;
+            } else {
+                fileNameDisplay.textContent = 'Click here to upload an invoice image';
+            }
+        });
+
+        // Handle form submission
+        uploadForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const file = fileInput.files[0];
+            if (!file) {
+                showError('Please select an image file first.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Show loading state for OCR
+            resultsContainer.classList.remove('hidden');
+            resultsContent.classList.add('hidden');
+            errorMessage.classList.add('hidden');
+            
+            extractButton.disabled = true;
+            buttonText.textContent = 'Extracting...';
+            buttonSpinner.classList.remove('hidden');
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || `Server error: ${response.statusText}`);
+                }
+                
+                // Populate results
+                invoiceNumberEl.textContent = result.invoice_number || 'N/A';
+                totalAmountEl.textContent = result.total_amount || 'N/A';
+                dueDateEl.textContent = result.due_date || 'N/A';
+                fullTextEl.textContent = result.full_text || 'No text extracted.';
+
+        
+                resultsContent.classList.remove('hidden');
+                
+
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                showError(error.message);
+            } finally {
+                // Revert loading state
+                extractButton.disabled = false;
+                buttonText.textContent = 'Extract Information';
+                buttonSpinner.classList.add('hidden');
+            }
+        });
+        
+
+        const accordionHeaders = document.querySelectorAll('.accordion-header');
+        accordionHeaders.forEach(header => {
+            header.addEventListener('click', () => {
+                const content = header.nextElementSibling; // This is the accordion-content div
+                const arrowIcon = header.querySelector('.arrow-icon');
+
+                // Toggle visibility
+                content.classList.toggle('hidden');
+                // Rotate arrow icon
+                arrowIcon.classList.toggle('rotate-180'); 
+            });
+        });
+
+
+        
+        function showError(message) {
+            errorMessage.textContent = `Error: ${message}`;
+            errorMessage.classList.remove('hidden');
+            resultsContent.classList.add('hidden');
+        }
+
+    </script>
+</body>
+</html>
